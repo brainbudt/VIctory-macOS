@@ -64,7 +64,7 @@ tools/macos/build-deps.sh "$ALIAS/target/deps-x86"
 
 # 5. CrossOver Wine, with the patches in tools/macos/patches. A Wine built
 # before a patch was added or changed gets only its server and ntdll rebuilt.
-if [[ -x $WINE_DIR/bin/wine && "$(cat "$WINE_DIR/.victory-patches" 2> /dev/null)" == "$(tools/macos/build-crossover-wine.sh --stamp)" ]]; then
+if [[ -x $WINE_DIR/bin/wine && -f $WINE_DIR/.victory-patches && -f $WINE_DIR/.victory-patch-paths && "$(cat "$WINE_DIR/.victory-patches" 2> /dev/null)" == "$(tools/macos/build-crossover-wine.sh --stamp)" ]]; then
   say "Wine already built"
 elif [[ -x $WINE_DIR/bin/wine ]]; then
   say "rebuilding Wine's server and ntdll with the patches in tools/macos/patches (a few minutes)"
