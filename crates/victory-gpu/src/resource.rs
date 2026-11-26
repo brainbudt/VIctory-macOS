@@ -513,8 +513,8 @@ pub(crate) extern "system" fn copyable_footprints(
         tracing::warn!(?desc, "no footprint for this resource");
     }
     if !total.is_null() {
-        // SAFETY: checked non-null.
         let size = if known { end.checked_sub(base) } else { None };
+        // SAFETY: checked non-null.
         unsafe { total.write(size.unwrap_or(u64::MAX)) };
     }
 }
