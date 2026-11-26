@@ -119,11 +119,18 @@ fi
 
 # 7. VIctory itself.
 say "building VIctory"
-cargo build --quiet --release -p victory --target x86_64-pc-windows-gnullvm
 [[ -f victory.toml ]] || cp victory.example.toml victory.toml
-# --version starts VIctory under Wine without reading victory.toml, whose
-# example game_dir does not exist yet, so a fresh setup does not fail here.
-tools/macos/victory.sh --version > /dev/null 2>&1 || die "VIctory did not start under Wine. Run tools/macos/victory.sh --version to see why"
+# victory.sh owns the single release build: it sets VICTORY_HELPER_DXC when
+# D3DMetal's DXC is there, and a separate build here without it would make
+# victory-gpu's build.rs see the variable appear and rebuild and relink
+# victory a second time. --version starts VIctory under Wine without reading
+# victory.toml, whose example game_dir does not exist yet, so a fresh setup
+# does not fail here. Stderr stays visible, and captured stdout is printed on
+# failure so diagnostics from either Cargo or a custom Wine wrapper are kept.
+version_out=$(tools/macos/victory.sh --version) || {
+  [[ -n "$version_out" ]] && print -r -- "$version_out" >&2
+  die "VIctory failed to build or start under Wine. Run tools/macos/victory.sh --version to see why"
+}
 
 print
 print -P "%F{green}Setup finished.%f"
