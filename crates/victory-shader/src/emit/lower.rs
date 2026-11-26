@@ -120,6 +120,10 @@ pub(crate) struct Lowered {
     /// title-memory page table, one entry per load.
     #[cfg(test)]
     pub raw_loads: [Vec<usize>; 2],
+    /// The written `dx.op.unary.f32` calls: their DXIL opcodes, and whether
+    /// the operand was denormal-flushed first. For structural tests.
+    #[cfg(test)]
+    pub unary_f32: Vec<(u32, bool)>,
 }
 
 pub(crate) struct Parts<'a> {
@@ -1700,6 +1704,8 @@ impl<'a> Lower<'a> {
             early_depth_stencil: self.s.flags & flags::EARLY_DEPTH_STENCIL != 0,
             #[cfg(test)]
             raw_loads,
+            #[cfg(test)]
+            unary_f32: self.s.m.written_unary_f32_flushes(),
             dxil: self.s.finish(),
             user_data,
             samplers: self.samplers,
@@ -6962,7 +6968,20 @@ impl<'a> Lower<'a> {
                 };
                 let r = match op {
                     12 | 13 => self.trig_turns(a, op == 12),
-                    22 => self.fract(a, 1.0, f32::from_bits(0x3F7F_FFFF)),
+                    // The console reads f32 denormals as zeros of their sign.
+                    // DXIL floor/ceil/fract need not do that (vkd3d on NVIDIA
+                    // keeps them: no FP32 denorm flush capability), so flush
+                    // on the bits first, as for max/min and the floor
+                    // conversions. trunc and rndne already round subnormals
+                    // to signed zero.
+                    22 => {
+                        let flushed = self.ftz(a);
+                        self.fract(flushed, 1.0, f32::from_bits(0x3F7F_FFFF))
+                    }
+                    27 | 28 => {
+                        let flushed = self.ftz(a);
+                        self.unary(op, flushed)
+                    }
                     _ => self.unary(op, a),
                 };
                 float(self, r)
